@@ -71,7 +71,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            target_volume: 0.95, // 95%
+            target_volume: 0.95,        // 95%
             check_interval_ms: 300_000, // 5 minutes (300,000 ms)
             enable_tray: true,
             enable_autostart: true,
@@ -121,11 +121,9 @@ impl Config {
             return Err(anyhow::anyhow!("Config file not found"));
         }
 
-        let content = fs::read_to_string(&config_path)
-            .context("Failed to read config file")?;
+        let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
 
-        let config: Config = toml::from_str(&content)
-            .context("Failed to parse config file")?;
+        let config: Config = toml::from_str(&content).context("Failed to parse config file")?;
 
         Ok(config)
     }
@@ -135,15 +133,12 @@ impl Config {
 
         // Ensure directory exists
         if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent)
-                .context("Failed to create config directory")?;
+            fs::create_dir_all(parent).context("Failed to create config directory")?;
         }
 
-        let content = toml::to_string_pretty(self)
-            .context("Failed to serialize config")?;
+        let content = toml::to_string_pretty(self).context("Failed to serialize config")?;
 
-        fs::write(&config_path, content)
-            .context("Failed to write config file")?;
+        fs::write(&config_path, content).context("Failed to write config file")?;
 
         Ok(())
     }
@@ -161,8 +156,8 @@ impl Config {
     }
 
     pub fn get_config_path() -> Result<PathBuf> {
-        let app_data = std::env::var("APPDATA")
-            .context("APPDATA environment variable not found")?;
+        let app_data =
+            std::env::var("APPDATA").context("APPDATA environment variable not found")?;
 
         // Create path: AppData/Roaming/mic-volume-control/config.toml
         let mut path = PathBuf::from(app_data);
@@ -174,14 +169,15 @@ impl Config {
 
     pub fn get_config_dir() -> Result<PathBuf> {
         let config_path = Self::get_config_path()?;
-        config_path.parent()
+        config_path
+            .parent()
             .map(|p| p.to_path_buf())
             .context("Failed to get parent directory of config path")
     }
 
     pub fn get_log_path() -> Result<PathBuf> {
-        let local_app_data = std::env::var("LOCALAPPDATA")
-            .context("LOCALAPPDATA environment variable not found")?;
+        let local_app_data =
+            std::env::var("LOCALAPPDATA").context("LOCALAPPDATA environment variable not found")?;
 
         // Create path: AppData/Local/mic-volume-control/logs/app.log
         let mut path = PathBuf::from(local_app_data);
@@ -198,8 +194,22 @@ impl Config {
         println!("Current Configuration:");
         println!("  Target Volume: {:.0}%", self.target_volume * 100.0);
         println!("  Check Interval: {}ms", self.check_interval_ms);
-        println!("  System Tray: {}", if self.enable_tray { "enabled" } else { "disabled" });
-        println!("  Autostart: {}", if self.enable_autostart { "enabled" } else { "disabled" });
+        println!(
+            "  System Tray: {}",
+            if self.enable_tray {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
+        println!(
+            "  Autostart: {}",
+            if self.enable_autostart {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
 
         if let Ok(path) = Self::get_config_path() {
             println!("\nConfig file: {}", path.display());

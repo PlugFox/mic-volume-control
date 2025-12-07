@@ -7,8 +7,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use config::{Cli, Commands, Config};
 use log::{error, info, warn};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 fn main() {
@@ -47,9 +47,8 @@ fn run() -> Result<()> {
     }
 
     // Create audio controller
-    let audio_controller = Arc::new(
-        audio::AudioController::new().context("Failed to initialize audio controller")?
-    );
+    let audio_controller =
+        Arc::new(audio::AudioController::new().context("Failed to initialize audio controller")?);
 
     // Set initial volume
     info!("Setting initial volume to target...");
@@ -84,7 +83,8 @@ fn run() -> Result<()> {
         ctrlc::set_handler(move || {
             info!("Received shutdown signal");
             r.store(false, Ordering::Relaxed);
-        }).context("Failed to set Ctrl+C handler")?;
+        })
+        .context("Failed to set Ctrl+C handler")?;
 
         while running.load(Ordering::Relaxed) {
             thread::sleep(std::time::Duration::from_millis(100));
@@ -104,9 +104,10 @@ fn handle_command(command: &Commands) -> Result<()> {
     match command {
         Commands::Install => {
             println!("Installing autostart task...");
-            let scheduler = scheduler::TaskScheduler::new()
-                .context("Failed to create task scheduler")?;
-            scheduler.register_autostart()
+            let scheduler =
+                scheduler::TaskScheduler::new().context("Failed to create task scheduler")?;
+            scheduler
+                .register_autostart()
                 .context("Failed to register autostart task")?;
             println!("Autostart task installed successfully!");
             Ok(())
@@ -114,9 +115,10 @@ fn handle_command(command: &Commands) -> Result<()> {
 
         Commands::Uninstall => {
             println!("Uninstalling autostart task...");
-            let scheduler = scheduler::TaskScheduler::new()
-                .context("Failed to create task scheduler")?;
-            scheduler.unregister_autostart()
+            let scheduler =
+                scheduler::TaskScheduler::new().context("Failed to create task scheduler")?;
+            scheduler
+                .unregister_autostart()
                 .context("Failed to unregister autostart task")?;
             println!("Autostart task uninstalled successfully!");
             Ok(())
@@ -137,8 +139,7 @@ fn handle_command(command: &Commands) -> Result<()> {
 
         Commands::SetVolume { volume } => {
             let volume_f32 = *volume as f32 / 100.0;
-            audio::AudioController::set_volume(volume_f32)
-                .context("Failed to set volume")?;
+            audio::AudioController::set_volume(volume_f32).context("Failed to set volume")?;
             println!("Microphone volume set to: {}%", volume);
             Ok(())
         }
@@ -186,10 +187,12 @@ fn setup_logging() -> Result<()> {
     // Rotate log if it's too large (>5 MB)
     rotate_log_if_needed(&log_path)?;
 
-    let target = Box::new(std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_path)?);
+    let target = Box::new(
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_path)?,
+    );
 
     env_logger::Builder::from_default_env()
         .format(|buf, record| {
@@ -228,8 +231,7 @@ fn rotate_log_if_needed(log_path: &std::path::Path) -> Result<()> {
 
             // Move current log to .1
             let rotated_name = format!("{}.1", log_path.display());
-            std::fs::rename(log_path, &rotated_name)
-                .context("Failed to rotate log file")?;
+            std::fs::rename(log_path, &rotated_name).context("Failed to rotate log file")?;
 
             // Delete oldest log if it exists
             let oldest_log = format!("{}.{}", log_path.display(), MAX_ROTATED_LOGS + 1);
@@ -241,12 +243,12 @@ fn rotate_log_if_needed(log_path: &std::path::Path) -> Result<()> {
 }
 
 fn setup_autostart() -> Result<()> {
-    let scheduler = scheduler::TaskScheduler::new()
-        .context("Failed to create task scheduler")?;
+    let scheduler = scheduler::TaskScheduler::new().context("Failed to create task scheduler")?;
 
     if !scheduler.is_registered() {
         info!("Registering autostart task...");
-        scheduler.register_autostart()
+        scheduler
+            .register_autostart()
             .context("Failed to register autostart task")?;
     } else {
         info!("Autostart task already registered");
@@ -307,10 +309,7 @@ mod tests {
         // Rotated log should exist
         let rotated = format!("{}.1", log_path.display());
         assert!(std::path::Path::new(&rotated).exists());
-        assert_eq!(
-            std::fs::metadata(&rotated).unwrap().len(),
-            size_before
-        );
+        assert_eq!(std::fs::metadata(&rotated).unwrap().len(), size_before);
     }
 
     #[test]
@@ -353,10 +352,7 @@ mod tests {
 
         // File should not be rotated
         assert!(log_path.exists());
-        assert_eq!(
-            std::fs::metadata(&log_path).unwrap().len(),
-            size_before
-        );
+        assert_eq!(std::fs::metadata(&log_path).unwrap().len(), size_before);
 
         // No rotated files should exist
         let rotated = format!("{}.1", log_path.display());

@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use log::info;
 use std::sync::mpsc::{Receiver, Sender};
 use tray_icon::{
-    menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
     TrayIconBuilder,
+    menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
 };
 use winit::event_loop::{ControlFlow, EventLoop};
 
@@ -97,7 +97,7 @@ impl TrayApp {
 
                 if dist_sq < 64 {
                     // Blue circle
-                    rgba[idx] = 50;      // R
+                    rgba[idx] = 50; // R
                     rgba[idx + 1] = 120; // G
                     rgba[idx + 2] = 200; // B
                     rgba[idx + 3] = 255; // A

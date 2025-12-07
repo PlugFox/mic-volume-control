@@ -1,12 +1,8 @@
 use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use windows::{
-    Win32::Media::Audio::*,
-    Win32::Media::Audio::Endpoints::*,
-    Win32::System::Com::*,
-};
+use std::sync::atomic::{AtomicBool, Ordering};
+use windows::{Win32::Media::Audio::Endpoints::*, Win32::Media::Audio::*, Win32::System::Com::*};
 
 /// Manages Windows Audio API interactions for microphone volume control
 pub struct AudioController {
