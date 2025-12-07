@@ -219,6 +219,41 @@ This ensures logs don't grow indefinitely while preserving recent history.
 
 ## 🛠️ Development
 
+### Cargo Aliases (npm scripts для Rust)
+
+Проект использует встроенные cargo aliases для упрощения разработки (определены в [.cargo/config.toml](.cargo/config.toml)):
+
+```bash
+# Проверка форматирования
+cargo fmt-check
+
+# Автоформатирование кода
+cargo fmt-fix
+
+# Линтинг с clippy
+cargo lint
+
+# Автоисправление проблем clippy
+cargo lint-fix
+
+# Проверка компиляции
+cargo check-all
+
+# Запуск тестов
+cargo test-all
+
+# Сборка release версии
+cargo build-release
+
+# Очистка
+cargo clean-all
+```
+
+Для полной CI-проверки локально запустите:
+```bash
+cargo fmt-check && cargo lint && cargo check-all && cargo test-all
+```
+
 ### Building
 
 ```bash
@@ -226,10 +261,10 @@ This ensures logs don't grow indefinitely while preserving recent history.
 cargo build
 
 # Release build (optimized)
-cargo build --release
+cargo build-release  # или cargo build --release
 
 # Run tests
-cargo test
+cargo test-all       # или cargo test
 
 # Run with logging
 RUST_LOG=debug cargo run
@@ -239,7 +274,7 @@ RUST_LOG=debug cargo run
 
 ```bash
 # Run all tests
-cargo test
+cargo test-all       # или cargo test
 
 # Run tests including ignored ones (requires microphone)
 cargo test -- --ignored --test-threads=1
@@ -249,6 +284,8 @@ cargo test -- --ignored --test-threads=1
 
 ```
 mic-volume-control/
+├── .cargo/
+│   └── config.toml     # Cargo aliases (npm scripts аналог)
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml      # Continuous integration

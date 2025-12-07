@@ -82,11 +82,7 @@ impl Default for Config {
 impl Config {
     /// Load config from file, merging with CLI arguments
     pub fn load(cli: &Cli) -> Result<Self> {
-        let mut config = if let Ok(file_config) = Self::load_from_file() {
-            file_config
-        } else {
-            Self::default()
-        };
+        let mut config = Self::load_from_file().unwrap_or_default();
 
         // Override with CLI arguments
         if let Some(volume) = cli.volume {
@@ -233,18 +229,25 @@ mod tests {
 
     #[test]
     fn test_invalid_volume() {
-        let mut config = Config::default();
-        config.target_volume = 1.5;
+        let config = Config {
+            target_volume: 1.5,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
 
-        config.target_volume = -0.1;
+        let config = Config {
+            target_volume: -0.1,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_invalid_interval() {
-        let mut config = Config::default();
-        config.check_interval_ms = 50;
+        let config = Config {
+            check_interval_ms: 50,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 

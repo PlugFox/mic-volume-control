@@ -217,26 +217,26 @@ fn rotate_log_if_needed(log_path: &std::path::Path) -> Result<()> {
     const MAX_ROTATED_LOGS: usize = 3; // Keep 3 old logs
 
     // Check if log file exists and is too large
-    if let Ok(metadata) = std::fs::metadata(log_path) {
-        if metadata.len() > MAX_LOG_SIZE {
-            // Rotate existing logs: app.log.2 -> app.log.3, app.log.1 -> app.log.2, etc.
-            for i in (1..MAX_ROTATED_LOGS).rev() {
-                let old_name = format!("{}.{}", log_path.display(), i);
-                let new_name = format!("{}.{}", log_path.display(), i + 1);
+    if let Ok(metadata) = std::fs::metadata(log_path)
+        && metadata.len() > MAX_LOG_SIZE
+    {
+        // Rotate existing logs: app.log.2 -> app.log.3, app.log.1 -> app.log.2, etc.
+        for i in (1..MAX_ROTATED_LOGS).rev() {
+            let old_name = format!("{}.{}", log_path.display(), i);
+            let new_name = format!("{}.{}", log_path.display(), i + 1);
 
-                if std::path::Path::new(&old_name).exists() {
-                    let _ = std::fs::rename(&old_name, &new_name);
-                }
+            if std::path::Path::new(&old_name).exists() {
+                let _ = std::fs::rename(&old_name, &new_name);
             }
-
-            // Move current log to .1
-            let rotated_name = format!("{}.1", log_path.display());
-            std::fs::rename(log_path, &rotated_name).context("Failed to rotate log file")?;
-
-            // Delete oldest log if it exists
-            let oldest_log = format!("{}.{}", log_path.display(), MAX_ROTATED_LOGS + 1);
-            let _ = std::fs::remove_file(&oldest_log);
         }
+
+        // Move current log to .1
+        let rotated_name = format!("{}.1", log_path.display());
+        std::fs::rename(log_path, &rotated_name).context("Failed to rotate log file")?;
+
+        // Delete oldest log if it exists
+        let oldest_log = format!("{}.{}", log_path.display(), MAX_ROTATED_LOGS + 1);
+        let _ = std::fs::remove_file(&oldest_log);
     }
 
     Ok(())

@@ -1,17 +1,53 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+use crossbeam_channel::Receiver as CrossbeamReceiver;
 use log::info;
 use std::sync::mpsc::{Receiver, Sender};
 use tray_icon::{
     TrayIconBuilder,
     menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
 };
-use winit::event_loop::{ControlFlow, EventLoop};
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 
 #[derive(Debug, Clone)]
 pub enum TrayMessage {
     Quit,
     ShowConfig,
     ToggleMonitoring,
+}
+
+struct TrayEventHandler {
+    menu_channel: CrossbeamReceiver<MenuEvent>,
+    tx: Sender<TrayMessage>,
+    quit_item: MenuItem,
+    config_item: MenuItem,
+    toggle_item: MenuItem,
+}
+
+impl ApplicationHandler for TrayEventHandler {
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: winit::window::WindowId,
+        _event: WindowEvent,
+    ) {
+        event_loop.set_control_flow(ControlFlow::Wait);
+
+        if let Ok(event) = self.menu_channel.try_recv() {
+            if event.id == self.quit_item.id() {
+                info!("Quit requested from tray");
+                let _ = self.tx.send(TrayMessage::Quit);
+                event_loop.exit();
+            } else if event.id == self.config_item.id() {
+                let _ = self.tx.send(TrayMessage::ShowConfig);
+            } else if event.id == self.toggle_item.id() {
+                let _ = self.tx.send(TrayMessage::ToggleMonitoring);
+            }
+        }
+    }
 }
 
 pub struct TrayApp {
@@ -58,22 +94,14 @@ impl TrayApp {
         info!("System tray icon created");
 
         let tx = self.tx.clone();
-        let menu_channel = MenuEvent::receiver();
+        let menu_channel = MenuEvent::receiver().clone();
 
-        event_loop.run(move |_event, elwt| {
-            elwt.set_control_flow(ControlFlow::Wait);
-
-            if let Ok(event) = menu_channel.try_recv() {
-                if event.id == quit_item.id() {
-                    info!("Quit requested from tray");
-                    let _ = tx.send(TrayMessage::Quit);
-                    elwt.exit();
-                } else if event.id == config_item.id() {
-                    let _ = tx.send(TrayMessage::ShowConfig);
-                } else if event.id == toggle_item.id() {
-                    let _ = tx.send(TrayMessage::ToggleMonitoring);
-                }
-            }
+        event_loop.run_app(&mut TrayEventHandler {
+            menu_channel,
+            tx,
+            quit_item,
+            config_item,
+            toggle_item,
         })?;
 
         Ok(())
@@ -101,13 +129,13 @@ impl TrayApp {
                     rgba[idx + 1] = 120; // G
                     rgba[idx + 2] = 200; // B
                     rgba[idx + 3] = 255; // A
-                } else if x >= 14 && x <= 18 && y >= 16 && y <= 24 {
+                } else if (14..=18).contains(&x) && (16..=24).contains(&y) {
                     // Stem
                     rgba[idx] = 50;
                     rgba[idx + 1] = 120;
                     rgba[idx + 2] = 200;
                     rgba[idx + 3] = 255;
-                } else if x >= 10 && x <= 22 && y >= 24 && y <= 26 {
+                } else if (10..=22).contains(&x) && (24..=26).contains(&y) {
                     // Base
                     rgba[idx] = 50;
                     rgba[idx + 1] = 120;

@@ -191,10 +191,7 @@ impl TaskScheduler {
     pub fn is_registered(&self) -> bool {
         unsafe {
             match self.service.GetFolder(&BSTR::from(TASK_FOLDER)) {
-                Ok(folder) => match folder.GetTask(&BSTR::from(TASK_NAME)) {
-                    Ok(_) => true,
-                    Err(_) => false,
-                },
+                Ok(folder) => folder.GetTask(&BSTR::from(TASK_NAME)).is_ok(),
                 Err(_) => false,
             }
         }
