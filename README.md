@@ -251,7 +251,19 @@ cargo clean-all
 
 Для полной CI-проверки локально запустите:
 ```bash
+# Проверка Rust кода
 cargo fmt-check && cargo lint && cargo check-all && cargo test-all
+
+# Проверка TOML файлов (требует taplo-cli)
+taplo format --check && taplo lint
+
+# Или всё вместе
+cargo fmt-check && cargo lint && taplo format --check && taplo lint && cargo test-all
+```
+
+Установка taplo (для проверки TOML):
+```bash
+cargo install taplo-cli --locked
 ```
 
 ### Building
