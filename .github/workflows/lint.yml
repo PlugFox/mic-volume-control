@@ -12,6 +12,11 @@ on:
       - '**.rs'
       - '**.toml'
 
+# Cancel in-progress runs when a new workflow with the same group is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   rustfmt:
     name: Format Check

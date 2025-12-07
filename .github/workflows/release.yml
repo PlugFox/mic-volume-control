@@ -13,6 +13,11 @@ on:
         type: boolean
         default: false
 
+# Cancel in-progress releases for the same version
+concurrency:
+  group: release-${{ github.event.inputs.version }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
