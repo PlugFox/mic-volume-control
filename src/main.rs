@@ -183,6 +183,9 @@ fn run_tray(audio_controller: Arc<audio::AudioController>, volume: f32) -> Resul
 fn setup_logging() -> Result<()> {
     let log_path = Config::get_log_path()?;
 
+    // Rotate log if it's too large (>5 MB)
+    rotate_log_if_needed(&log_path)?;
+
     let target = Box::new(std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -202,6 +205,37 @@ fn setup_logging() -> Result<()> {
         .target(env_logger::Target::Pipe(target))
         .filter_level(log::LevelFilter::Info)
         .init();
+
+    Ok(())
+}
+
+fn rotate_log_if_needed(log_path: &std::path::Path) -> Result<()> {
+    const MAX_LOG_SIZE: u64 = 5 * 1024 * 1024; // 5 MB
+    const MAX_ROTATED_LOGS: usize = 3; // Keep 3 old logs
+
+    // Check if log file exists and is too large
+    if let Ok(metadata) = std::fs::metadata(log_path) {
+        if metadata.len() > MAX_LOG_SIZE {
+            // Rotate existing logs: app.log.2 -> app.log.3, app.log.1 -> app.log.2, etc.
+            for i in (1..MAX_ROTATED_LOGS).rev() {
+                let old_name = format!("{}.{}", log_path.display(), i);
+                let new_name = format!("{}.{}", log_path.display(), i + 1);
+
+                if std::path::Path::new(&old_name).exists() {
+                    let _ = std::fs::rename(&old_name, &new_name);
+                }
+            }
+
+            // Move current log to .1
+            let rotated_name = format!("{}.1", log_path.display());
+            std::fs::rename(log_path, &rotated_name)
+                .context("Failed to rotate log file")?;
+
+            // Delete oldest log if it exists
+            let oldest_log = format!("{}.{}", log_path.display(), MAX_ROTATED_LOGS + 1);
+            let _ = std::fs::remove_file(&oldest_log);
+        }
+    }
 
     Ok(())
 }
@@ -238,10 +272,94 @@ fn open_config() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     #[test]
     fn test_audio_controller_creation() {
         let controller = audio::AudioController::new();
         assert!(controller.is_ok());
+    }
+
+    #[test]
+    fn test_log_rotation() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("test.log");
+
+        // Create a large log file (6 MB)
+        {
+            let mut file = std::fs::File::create(&log_path).unwrap();
+            let data = vec![b'a'; 1024 * 1024]; // 1 MB chunk
+            for _ in 0..6 {
+                file.write_all(&data).unwrap();
+            }
+        }
+
+        // Check file size before rotation
+        let size_before = std::fs::metadata(&log_path).unwrap().len();
+        assert!(size_before > 5 * 1024 * 1024);
+
+        // Rotate log
+        rotate_log_if_needed(&log_path).unwrap();
+
+        // Original log should be rotated
+        assert!(!log_path.exists() || std::fs::metadata(&log_path).unwrap().len() == 0);
+
+        // Rotated log should exist
+        let rotated = format!("{}.1", log_path.display());
+        assert!(std::path::Path::new(&rotated).exists());
+        assert_eq!(
+            std::fs::metadata(&rotated).unwrap().len(),
+            size_before
+        );
+    }
+
+    #[test]
+    fn test_log_rotation_multiple() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("test.log");
+
+        // Create and rotate multiple times
+        for i in 1..=5 {
+            let mut file = std::fs::File::create(&log_path).unwrap();
+            let data = vec![b'0' + i as u8; 6 * 1024 * 1024];
+            file.write_all(&data).unwrap();
+            drop(file);
+
+            rotate_log_if_needed(&log_path).unwrap();
+        }
+
+        // Check that we keep only MAX_ROTATED_LOGS (3) old logs
+        assert!(std::path::Path::new(&format!("{}.1", log_path.display())).exists());
+        assert!(std::path::Path::new(&format!("{}.2", log_path.display())).exists());
+        assert!(std::path::Path::new(&format!("{}.3", log_path.display())).exists());
+        assert!(!std::path::Path::new(&format!("{}.4", log_path.display())).exists());
+    }
+
+    #[test]
+    fn test_log_no_rotation_when_small() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("test.log");
+
+        // Create a small log file (1 KB)
+        {
+            let mut file = std::fs::File::create(&log_path).unwrap();
+            file.write_all(b"Small log content").unwrap();
+        }
+
+        let size_before = std::fs::metadata(&log_path).unwrap().len();
+
+        // Try to rotate
+        rotate_log_if_needed(&log_path).unwrap();
+
+        // File should not be rotated
+        assert!(log_path.exists());
+        assert_eq!(
+            std::fs::metadata(&log_path).unwrap().len(),
+            size_before
+        );
+
+        // No rotated files should exist
+        let rotated = format!("{}.1", log_path.display());
+        assert!(!std::path::Path::new(&rotated).exists());
     }
 }

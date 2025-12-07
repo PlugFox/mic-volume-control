@@ -1,0 +1,255 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-git-
+
+      - name: Update version in Cargo.toml
+        run: |
+          $version = "${{ inputs.version }}".TrimStart('v')
+          (Get-Content Cargo.toml) -replace '^version = ".*"', "version = `"$version`"" | Set-Content Cargo.toml
+          Write-Host "Updated version to $version"
+
+      - name: Build release binary
+        run: cargo build --release --verbose
+
+      - name: Run tests
+        run: cargo test --release --verbose
+
+      - name: Create artifact directory
+        run: New-Item -ItemType Directory -Force -Path artifacts
+
+      - name: Copy binary to artifacts
+        run: |
+          Copy-Item target/release/mic-volume-control.exe artifacts/
+          Write-Host "Binary copied to artifacts/"
+
+      - name: Create README for release
+        run: |
+          @"
+          # Microphone Volume Control ${{ inputs.version }}
+
+          ## Installation
+
+          1. Download ``mic-volume-control.exe``
+          2. Run the executable
+          3. The application will:
+             - Set microphone volume to 95% (default)
+             - Create a system tray icon
+             - Register itself for autostart
+
+          ## Usage
+
+          ### Basic Commands
+
+          ``````bash
+          # Run with default settings
+          mic-volume-control.exe
+
+          # Set custom volume (0-100)
+          mic-volume-control.exe --volume 90
+
+          # Set check interval (milliseconds)
+          mic-volume-control.exe --interval 1000
+
+          # Run without system tray
+          mic-volume-control.exe --no-tray
+          ``````
+
+          ### Subcommands
+
+          ``````bash
+          # Install autostart
+          mic-volume-control.exe install
+
+          # Uninstall autostart
+          mic-volume-control.exe uninstall
+
+          # Show configuration
+          mic-volume-control.exe config
+
+          # Get current volume
+          mic-volume-control.exe get-volume
+
+          # Set volume once
+          mic-volume-control.exe set-volume 95
+          ``````
+
+          ## Configuration
+
+          Edit the configuration file at:
+          ``````
+          %APPDATA%\mic-volume-control\config.toml
+          ``````
+
+          ## Logs
+
+          Logs are stored at:
+          ``````
+          %LOCALAPPDATA%\mic-volume-control\logs\app.log
+          ``````
+
+          ## System Requirements
+
+          - Windows 10 or later
+          - Microphone device
+
+          ## Support
+
+          For issues and feature requests, visit:
+          https://github.com/plugfox/mic-volume-control/issues
+
+          ---
+
+          **Built with Rust** 🦀
+          "@ | Set-Content artifacts/README.txt
+
+      - name: Calculate checksums
+        run: |
+          $hash = Get-FileHash artifacts/mic-volume-control.exe -Algorithm SHA256
+          "$($hash.Hash)  mic-volume-control.exe" | Set-Content artifacts/SHA256SUMS.txt
+          Write-Host "SHA256: $($hash.Hash)"
+
+      - name: Get binary info
+        id: binary_info
+        run: |
+          $size = (Get-Item artifacts/mic-volume-control.exe).length
+          $sizeKB = [math]::Round($size / 1KB, 2)
+          $sizeMB = [math]::Round($size / 1MB, 2)
+          Write-Host "Binary size: $sizeMB MB ($sizeKB KB)"
+          echo "size_mb=$sizeMB" >> $env:GITHUB_OUTPUT
+          echo "size_kb=$sizeKB" >> $env:GITHUB_OUTPUT
+
+      - name: Create archive
+        run: |
+          Compress-Archive -Path artifacts/* -DestinationPath mic-volume-control-${{ inputs.version }}-windows-x86_64.zip
+          Write-Host "Archive created"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          $notes = @"
+          ## What's New
+
+          Microphone Volume Control ${{ inputs.version }} for Windows
+
+          ### Features
+
+          - ✅ Automatic microphone volume control
+          - ✅ System tray integration
+          - ✅ Autostart support via Task Scheduler
+          - ✅ CLI interface with multiple commands
+          - ✅ TOML configuration
+          - ✅ Comprehensive logging
+
+          ### Installation
+
+          1. Download the ZIP file below
+          2. Extract ``mic-volume-control.exe``
+          3. Run the executable
+
+          Or download just the EXE file and run it.
+
+          ### Binary Information
+
+          - **Size**: ${{ steps.binary_info.outputs.size_mb }} MB
+          - **Platform**: Windows x86_64
+          - **Architecture**: x86_64
+
+          ### Files
+
+          - ``mic-volume-control.exe`` - Main executable
+          - ``README.txt`` - Usage instructions
+          - ``SHA256SUMS.txt`` - Checksums for verification
+
+          ### Verification
+
+          Verify the download integrity:
+          ``````powershell
+          `$hash = Get-FileHash mic-volume-control.exe -Algorithm SHA256
+          `$hash.Hash
+          ``````
+
+          Compare with SHA256SUMS.txt
+
+          ---
+
+          **Full changelog**: https://github.com/plugfox/mic-volume-control/commits/${{ inputs.version }}
+          "@
+          $notes | Out-File -FilePath release_notes.md -Encoding utf8
+          echo "notes_file=release_notes.md" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          body_path: release_notes.md
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            mic-volume-control-${{ inputs.version }}-windows-x86_64.zip
+            artifacts/mic-volume-control.exe
+            artifacts/README.txt
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mic-volume-control-${{ inputs.version }}
+          path: artifacts/
+          retention-days: 90
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: success()
+    steps:
+      - name: Release created
+        run: |
+          echo "✅ Release ${{ inputs.version }} created successfully!"
+          echo "🔗 https://github.com/plugfox/mic-volume-control/releases/tag/${{ inputs.version }}"

@@ -1,0 +1,14 @@
+# Clippy configuration
+# Deny settings
+warn-on-all-wildcard-imports = true
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 30
+
+# Maximum allowed expression complexity
+too-many-arguments-threshold = 7
+
+# Pedantic lints to allow
+# (These are generally good but may be too strict for some projects)
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

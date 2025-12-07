@@ -1,5 +1,8 @@
 # Microphone Volume Control 🎤
 
+[![CI](https://github.com/plugfox/mic-volume-control/workflows/CI/badge.svg)](https://github.com/plugfox/mic-volume-control/actions/workflows/ci.yml)
+[![Lint](https://github.com/plugfox/mic-volume-control/workflows/Lint/badge.svg)](https://github.com/plugfox/mic-volume-control/actions/workflows/lint.yml)
+[![Release](https://github.com/plugfox/mic-volume-control/workflows/Release/badge.svg)](https://github.com/plugfox/mic-volume-control/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 [![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
@@ -58,7 +61,7 @@ Download the latest release from the [Releases](https://github.com/plugfox/mic-v
 
 ### Basic Usage
 
-Start with default settings (95% volume, 500ms check interval):
+Start with default settings (95% volume, 5 minute check interval):
 ```bash
 mic-volume-control.exe
 ```
@@ -121,8 +124,8 @@ Example configuration:
 # Target volume level (0.0 to 1.0, where 1.0 = 100%)
 target_volume = 0.95
 
-# How often to check the volume in milliseconds
-check_interval_ms = 500
+# How often to check the volume in milliseconds (300000 = 5 minutes)
+check_interval_ms = 300000
 
 # Enable system tray icon
 enable_tray = true
@@ -137,6 +140,15 @@ Settings are applied in the following order (later overrides earlier):
 1. Default values
 2. Configuration file
 3. Command-line arguments
+
+### Recommended Check Intervals
+
+- **Normal use**: 300000ms (5 minutes) - Default, minimal CPU usage
+- **Responsive**: 60000ms (1 minute) - Good balance
+- **Very responsive**: 10000ms (10 seconds) - For active monitoring
+- **Real-time**: 1000ms (1 second) - Only if needed, higher CPU usage
+
+The default 5-minute interval is sufficient for most use cases, as volume changes are typically rare.
 
 ## 🖥️ System Tray
 
@@ -160,6 +172,16 @@ The log file contains:
 - Errors and warnings
 - Timestamps for all events
 
+### Log Rotation
+
+Logs are automatically rotated when they exceed 5 MB:
+- Current log: `app.log`
+- Rotated logs: `app.log.1`, `app.log.2`, `app.log.3`
+- Maximum rotated logs kept: 3
+- Oldest logs are automatically deleted
+
+This ensures logs don't grow indefinitely while preserving recent history.
+
 ## 🔧 How It Works
 
 1. **Initialization**:
@@ -169,14 +191,14 @@ The log file contains:
    - Creates system tray icon
 
 2. **Volume Monitoring**:
-   - Checks microphone volume at configured intervals
+   - Checks microphone volume at configured intervals (default: every 5 minutes)
    - Detects volume drift (>1% change)
    - Automatically corrects volume to target level
 
 3. **Background Operation**:
    - Runs as a lightweight background process
    - Uses COM (Component Object Model) for audio control
-   - Minimal CPU usage between checks (~0.1%)
+   - Sleeps between checks - virtually zero CPU usage with default interval
 
 ## 🏗️ Architecture
 
@@ -227,6 +249,11 @@ cargo test -- --ignored --test-threads=1
 
 ```
 mic-volume-control/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml      # Continuous integration
+│       ├── lint.yml    # Code quality checks
+│       └── release.yml # Release automation
 ├── src/
 │   ├── main.rs         # Application entry point and CLI handling
 │   ├── audio.rs        # Windows Audio API wrapper with RAII COM guards
@@ -234,8 +261,46 @@ mic-volume-control/
 │   ├── scheduler.rs    # Task Scheduler integration for autostart
 │   └── tray.rs         # System tray implementation
 ├── Cargo.toml          # Dependencies and metadata
+├── rustfmt.toml        # Code formatting rules
+├── clippy.toml         # Linter configuration
 └── README.md           # This file
 ```
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions for automated testing and releases:
+
+#### Continuous Integration (CI)
+Runs on every push/PR to main branches when Rust or TOML files change:
+- **Format Check**: Ensures code follows rustfmt standards
+- **Clippy Lint**: Static analysis for common mistakes
+- **Tests**: Runs all unit tests
+- **Build**: Compiles release binary
+- **Security Audit**: Checks for vulnerable dependencies
+
+#### Lint Workflow
+Separate workflow for code quality:
+- Rust formatting validation
+- Clippy warnings as errors
+- TOML syntax validation
+
+#### Release Workflow
+Manual trigger for creating releases:
+- Updates version in Cargo.toml
+- Builds optimized binary
+- Generates checksums (SHA256)
+- Creates GitHub release with:
+  - Standalone EXE
+  - ZIP archive with README
+  - Release notes
+  - Binary size information
+
+**To create a release:**
+1. Go to Actions → Release workflow
+2. Click "Run workflow"
+3. Enter version (e.g., `v1.0.0`)
+4. Optionally mark as pre-release
+5. Run!
 
 ## 📋 Requirements
 
@@ -253,7 +318,7 @@ mic-volume-control/
 ### Volume keeps resetting
 - Another application may be controlling microphone volume
 - Check if exclusive mode is enabled in microphone properties
-- Increase check interval if too aggressive
+- Decrease check interval if you need faster response (default is 5 minutes)
 
 ### Autostart not working
 - Manually install: `mic-volume-control.exe install`
@@ -261,15 +326,16 @@ mic-volume-control/
 - Ensure application path hasn't changed
 
 ### High CPU usage
-- Increase `check_interval_ms` in config (e.g., 1000ms)
+- This shouldn't happen with the default 5-minute interval
+- If you decreased the interval, increase it back (e.g., 60000ms = 1 minute)
 - Check for conflicting audio software
 
 ## 📊 Performance
 
 - **Memory**: ~2-5 MB
-- **CPU**: <0.1% (with 500ms interval)
+- **CPU**: <0.01% (with 5 minute interval, nearly zero impact)
 - **Startup**: <100ms
-- **Binary Size**: ~1.5 MB (release build, stripped)
+- **Binary Size**: ~1.7 MB (release build, stripped)
 
 ## 🔒 Security
 

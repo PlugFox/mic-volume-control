@@ -1,12 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-const QUALIFIER: &str = "com";
-const ORGANIZATION: &str = "mic-volume-control";
 const APPLICATION: &str = "mic-volume-control";
 
 #[derive(Debug, Parser)]
@@ -75,7 +72,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             target_volume: 0.95, // 95%
-            check_interval_ms: 500,
+            check_interval_ms: 300_000, // 5 minutes (300,000 ms)
             enable_tray: true,
             enable_autostart: true,
         }
@@ -164,10 +161,12 @@ impl Config {
     }
 
     pub fn get_config_path() -> Result<PathBuf> {
-        let proj_dirs = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION)
-            .context("Failed to determine config directory")?;
+        let app_data = std::env::var("APPDATA")
+            .context("APPDATA environment variable not found")?;
 
-        let mut path = proj_dirs.config_dir().to_path_buf();
+        // Create path: AppData/Roaming/mic-volume-control/config.toml
+        let mut path = PathBuf::from(app_data);
+        path.push(APPLICATION);
         path.push("config.toml");
 
         Ok(path)
@@ -181,10 +180,12 @@ impl Config {
     }
 
     pub fn get_log_path() -> Result<PathBuf> {
-        let proj_dirs = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION)
-            .context("Failed to determine log directory")?;
+        let local_app_data = std::env::var("LOCALAPPDATA")
+            .context("LOCALAPPDATA environment variable not found")?;
 
-        let mut path = proj_dirs.data_local_dir().to_path_buf();
+        // Create path: AppData/Local/mic-volume-control/logs/app.log
+        let mut path = PathBuf::from(local_app_data);
+        path.push(APPLICATION);
         path.push("logs");
         fs::create_dir_all(&path)?;
         path.push("app.log");

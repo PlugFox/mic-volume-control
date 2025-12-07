@@ -1,1 +1,51 @@
-/target
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+*.log
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Release artifacts
+artifacts/
+*.zip
+*.tar.gz
+
+# Temporary files
+*.tmp
+*.temp
+
+# User configuration (keep template)
+config.toml
+
+# Test coverage
+*.profraw
+*.profdata
+lcov.info
+coverage/
+
+# Documentation
+/doc/
