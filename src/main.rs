@@ -110,6 +110,7 @@ fn run() -> Result<()> {
                 .context("Failed to unregister task")?;
 
             println!("Task uninstalled successfully!");
+            println!("VBScript wrapper removed.");
         }
 
         Commands::Config => {
@@ -127,6 +128,21 @@ fn run() -> Result<()> {
                     "Not installed"
                 }
             );
+
+            // Show VBScript path and status
+            if let Ok(vbs_path) = scheduler::TaskScheduler::get_vbs_path() {
+                let vbs_exists = vbs_path.exists();
+                println!(
+                    "VBScript: {} {}",
+                    vbs_path.display(),
+                    if vbs_exists { "(exists)" } else { "(missing)" }
+                );
+            }
+
+            // Show current volume
+            if let Ok(volume) = audio::AudioController::get_current_volume() {
+                println!("\nCurrent Volume: {:.0}%", volume * 100.0);
+            }
         }
     }
 

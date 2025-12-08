@@ -28,6 +28,9 @@ impl TaskScheduler {
     pub fn register_task(&self, target_volume: f32, interval_minutes: u32) -> Result<()> {
         let exe_path = std::env::current_exe().context("Failed to get current executable path")?;
 
+        // Create VBScript wrapper to run without console window
+        let vbs_path = Self::create_vbs_wrapper(&exe_path, target_volume)?;
+
         unsafe {
             let root_folder = self
                 .service
@@ -135,16 +138,16 @@ impl TaskScheduler {
             let exec_action: IExecAction =
                 action.cast().context("Failed to cast to IExecAction")?;
 
-            let exe_path_str = exe_path
-                .to_str()
-                .context("Failed to convert executable path to string")?;
+            // Use wscript.exe to run VBScript wrapper (no console window)
             exec_action
-                .SetPath(&BSTR::from(exe_path_str))
+                .SetPath(&BSTR::from("wscript.exe"))
                 .context("Failed to set executable path")?;
 
-            // Set arguments to call volume command in quiet mode
-            let volume_percent = (target_volume * 100.0) as u8;
-            let args = format!("--quiet volume {}", volume_percent);
+            // Pass VBScript path as argument with //B flag (batch mode, no UI)
+            let vbs_path_str = vbs_path
+                .to_str()
+                .context("Failed to convert VBScript path to string")?;
+            let args = format!("//B //Nologo \"{}\"", vbs_path_str);
             exec_action
                 .SetArguments(&BSTR::from(args))
                 .context("Failed to set arguments")?;
@@ -228,9 +231,12 @@ impl TaskScheduler {
             root_folder
                 .DeleteTask(&BSTR::from(TASK_NAME), 0)
                 .context("Failed to delete task")?;
-
-            Ok(())
         }
+
+        // Clean up VBScript wrapper file
+        Self::cleanup_vbs_wrapper()?;
+
+        Ok(())
     }
 
     pub fn is_registered(&self) -> bool {
@@ -240,5 +246,65 @@ impl TaskScheduler {
                 Err(_) => false,
             }
         }
+    }
+
+    fn create_vbs_wrapper(
+        exe_path: &std::path::Path,
+        target_volume: f32,
+    ) -> Result<std::path::PathBuf> {
+        use std::io::Write;
+
+        // Get application data directory
+        let app_data =
+            std::env::var("APPDATA").context("APPDATA environment variable not found")?;
+        let mut vbs_dir = std::path::PathBuf::from(app_data);
+        vbs_dir.push("mic-volume-control");
+
+        // Create directory if it doesn't exist
+        std::fs::create_dir_all(&vbs_dir).context("Failed to create VBS directory")?;
+
+        let vbs_path = vbs_dir.join("run-silent.vbs");
+
+        // Create VBScript that runs exe without window
+        let exe_path_str = exe_path
+            .to_str()
+            .context("Failed to convert exe path to string")?;
+        let volume_percent = (target_volume * 100.0) as u8;
+
+        let vbs_content = format!(
+            r#"Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run """{}""  volume {}", 0, False
+"#,
+            exe_path_str, volume_percent
+        );
+
+        let mut file = std::fs::File::create(&vbs_path).context("Failed to create VBS file")?;
+        file.write_all(vbs_content.as_bytes())
+            .context("Failed to write VBS content")?;
+
+        Ok(vbs_path)
+    }
+
+    fn cleanup_vbs_wrapper() -> Result<()> {
+        let app_data =
+            std::env::var("APPDATA").context("APPDATA environment variable not found")?;
+        let mut vbs_path = std::path::PathBuf::from(app_data);
+        vbs_path.push("mic-volume-control");
+        vbs_path.push("run-silent.vbs");
+
+        if vbs_path.exists() {
+            std::fs::remove_file(&vbs_path).context("Failed to delete VBScript file")?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get_vbs_path() -> Result<std::path::PathBuf> {
+        let app_data =
+            std::env::var("APPDATA").context("APPDATA environment variable not found")?;
+        let mut vbs_path = std::path::PathBuf::from(app_data);
+        vbs_path.push("mic-volume-control");
+        vbs_path.push("run-silent.vbs");
+        Ok(vbs_path)
     }
 }
