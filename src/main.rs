@@ -39,6 +39,7 @@ fn main() {
 fn run() -> Result<()> {
     let _com = ComGuard::new()?;
     let cli = Cli::parse();
+    let quiet = cli.quiet;
 
     // If no command provided, clap will show help due to arg_required_else_help
     let Some(command) = cli.command else {
@@ -51,12 +52,16 @@ fn run() -> Result<()> {
                 // Set volume
                 let volume_f32 = volume as f32 / 100.0;
                 audio::AudioController::set_volume(volume_f32).context("Failed to set volume")?;
-                println!("Microphone volume set to: {}%", volume);
+                if !quiet {
+                    println!("Microphone volume set to: {}%", volume);
+                }
             } else {
                 // Get volume
                 let volume = audio::AudioController::get_current_volume()
                     .context("Failed to get current volume")?;
-                println!("Current microphone volume: {:.0}%", volume * 100.0);
+                if !quiet {
+                    println!("Current microphone volume: {:.0}%", volume * 100.0);
+                }
             }
         }
 

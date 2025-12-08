@@ -142,9 +142,9 @@ impl TaskScheduler {
                 .SetPath(&BSTR::from(exe_path_str))
                 .context("Failed to set executable path")?;
 
-            // Set arguments to call volume command
+            // Set arguments to call volume command in quiet mode
             let volume_percent = (target_volume * 100.0) as u8;
-            let args = format!("volume {}", volume_percent);
+            let args = format!("--quiet volume {}", volume_percent);
             exec_action
                 .SetArguments(&BSTR::from(args))
                 .context("Failed to set arguments")?;
@@ -185,6 +185,21 @@ impl TaskScheduler {
             settings
                 .SetMultipleInstances(TASK_INSTANCES_IGNORE_NEW)
                 .context("Failed to set multiple instances policy")?;
+
+            // Run hidden without showing window
+            settings
+                .SetHidden(VARIANT_TRUE)
+                .context("Failed to set hidden mode")?;
+
+            // Don't wake computer to run task
+            settings
+                .SetWakeToRun(VARIANT_FALSE)
+                .context("Failed to set wake to run")?;
+
+            // Run task in background with no UI
+            settings
+                .SetPriority(7) // NORMAL_PRIORITY_CLASS
+                .context("Failed to set priority")?;
 
             // Register the task
             root_folder

@@ -12,6 +12,10 @@ const APPLICATION: &str = "mic-volume-control";
 #[command(version)]
 #[command(arg_required_else_help = true)]
 pub struct Cli {
+    /// Suppress all output (silent mode)
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
