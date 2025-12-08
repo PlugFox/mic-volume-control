@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug: mic-volume-control",
+      "cargo": {
+        "args": ["build", "--bin=mic-volume-control", "--package=mic-volume-control"]
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug: mic-volume-control (no tray)",
+      "cargo": {
+        "args": ["build", "--bin=mic-volume-control", "--package=mic-volume-control"]
+      },
+      "args": ["--no-tray"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug: mic-volume-control (custom volume)",
+      "cargo": {
+        "args": ["build", "--bin=mic-volume-control", "--package=mic-volume-control"]
+      },
+      "args": ["--volume", "90", "--interval", "5000"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug: Tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--package=mic-volume-control"]
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_BACKTRACE": "1"
+      }
+    }
+  ]
+}

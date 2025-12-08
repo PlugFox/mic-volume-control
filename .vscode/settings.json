@@ -1,0 +1,61 @@
+{
+  // Rust Analyzer settings
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.allTargets": true,
+  "rust-analyzer.check.extraArgs": ["--", "-D", "warnings"],
+  "rust-analyzer.cargo.allFeatures": false,
+  "rust-analyzer.cargo.features": [],
+  "rust-analyzer.rustfmt.rangeFormatting.enable": true,
+
+  // Editor settings for Rust
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.rulers": [100]
+  },
+
+  // Editor settings for TOML
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+
+  // Files settings
+  "files.associations": {
+    "*.rs": "rust",
+    "*.toml": "toml"
+  },
+  "files.exclude": {
+    "**/target": true,
+    "**/.git": true
+  },
+
+  // Search settings
+  "search.exclude": {
+    "**/target": true,
+    "**/Cargo.lock": true
+  },
+
+  // Even Better TOML settings
+  "evenBetterToml.formatter.alignEntries": false,
+  "evenBetterToml.formatter.alignComments": false,
+  "evenBetterToml.formatter.arrayTrailingComma": true,
+  "evenBetterToml.formatter.arrayAutoExpand": true,
+  "evenBetterToml.formatter.compactArrays": true,
+  "evenBetterToml.formatter.compactInlineTables": false,
+  "evenBetterToml.formatter.indentTables": false,
+  "evenBetterToml.formatter.indentEntries": false,
+  "evenBetterToml.formatter.trailingNewline": true,
+  "evenBetterToml.formatter.reorderKeys": false,
+  "evenBetterToml.formatter.allowedBlankLines": 1,
+  "evenBetterToml.formatter.crlf": false,
+
+  // Terminal settings
+  "terminal.integrated.env.windows": {
+    "RUST_BACKTRACE": "1"
+  }
+}

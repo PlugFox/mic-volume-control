@@ -303,6 +303,12 @@ mic-volume-control/
 │       ├── ci.yml      # Continuous integration
 │       ├── lint.yml    # Code quality checks
 │       └── release.yml # Release automation
+├── .vscode/
+│   ├── tasks.json      # VS Code tasks (build, test, CI)
+│   ├── settings.json   # Editor and Rust settings
+│   ├── launch.json     # Debug configurations
+│   ├── extensions.json # Recommended extensions
+│   └── README.md       # VS Code setup guide
 ├── src/
 │   ├── main.rs         # Application entry point and CLI handling
 │   ├── audio.rs        # Windows Audio API wrapper with RAII COM guards

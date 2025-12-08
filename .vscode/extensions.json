@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    // Rust support
+    "rust-lang.rust-analyzer",
+    // TOML support
+    "tamasfe.even-better-toml",
+    // Additional helpful extensions
+    "vadimcn.vscode-lldb",
+    "serayuzgur.crates",
+    "fill-labs.dependi"
+  ]
+}

@@ -1,0 +1,272 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Rust: Format Check",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["fmt", "--", "--check"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "Rust: Lint (Clippy)",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["clippy", "--all-targets", "--", "-D", "warnings"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "Rust: Check All",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["check", "--all-targets"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "build"
+    },
+    {
+      "label": "Rust: Test All",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test", "--all-targets"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "TOML: Format Check",
+      "type": "shell",
+      "command": "taplo",
+      "args": ["format", "--check"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "TOML: Lint",
+      "type": "shell",
+      "command": "taplo",
+      "args": ["lint"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "CI: Full Check",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Rust: Format Check",
+        "TOML: Format Check",
+        "Rust: Lint (Clippy)",
+        "TOML: Lint",
+        "Rust: Check All",
+        "Rust: Test All"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Rust: Format Fix",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["fmt"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "none"
+    },
+    {
+      "label": "Rust: Lint Fix",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["clippy", "--all-targets", "--fix", "--allow-dirty"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "none"
+    },
+    {
+      "label": "TOML: Format Fix",
+      "type": "shell",
+      "command": "taplo",
+      "args": ["format"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "none"
+    },
+    {
+      "label": "Fix: All",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Rust: Format Fix", "TOML: Format Fix", "Rust: Lint Fix"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "none"
+    },
+    {
+      "label": "Build: Release",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build", "--release"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Build: Debug",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "build"
+    },
+    {
+      "label": "Run: Debug",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "group": "none"
+    },
+    {
+      "label": "Run: Release",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--release"],
+      "problemMatcher": ["$rustc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "group": "none"
+    },
+    {
+      "label": "Clean: All",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["clean"],
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "group": "none"
+    }
+  ]
+}

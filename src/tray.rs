@@ -26,7 +26,13 @@ struct TrayEventHandler {
 }
 
 impl ApplicationHandler for TrayEventHandler {
-    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        // Set control flow to wait for events
+        event_loop.set_control_flow(ControlFlow::Wait);
+
+        // Start polling for tray menu events
+        event_loop.set_control_flow(ControlFlow::Poll);
+    }
 
     fn window_event(
         &mut self,
@@ -34,8 +40,19 @@ impl ApplicationHandler for TrayEventHandler {
         _window_id: winit::window::WindowId,
         _event: WindowEvent,
     ) {
-        event_loop.set_control_flow(ControlFlow::Wait);
+        // This is called for window events, but we don't have windows in a tray app
+        self.check_menu_events(event_loop);
+    }
 
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // This is called before the event loop waits for new events
+        // Perfect place to check for tray menu events
+        self.check_menu_events(event_loop);
+    }
+}
+
+impl TrayEventHandler {
+    fn check_menu_events(&mut self, event_loop: &ActiveEventLoop) {
         if let Ok(event) = self.menu_channel.try_recv() {
             if event.id == self.quit_item.id() {
                 info!("Quit requested from tray");
