@@ -273,7 +273,7 @@ impl TaskScheduler {
 
         let vbs_content = format!(
             r#"Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run """{}""  volume {}", 0, False
+WshShell.Run """{}"" volume {}", 0, False
 "#,
             exe_path_str, volume_percent
         );
