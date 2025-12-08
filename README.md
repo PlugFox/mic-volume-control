@@ -74,6 +74,9 @@ mic-volume-control.exe volume
 
 # Set microphone volume once (without installing task)
 mic-volume-control.exe volume 95
+
+# Set volume in quiet mode (no output)
+mic-volume-control.exe --quiet volume 95
 ```
 
 ### View Configuration
