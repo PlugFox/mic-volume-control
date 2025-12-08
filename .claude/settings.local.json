@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.targetreleasemic-volume-control.exe --help)",
+      "Bash(\"./target/release/mic-volume-control.exe\" --help)",
+      "Bash(\"./target/release/mic-volume-control.exe\" install-task --help)",
+      "Bash(cargo test:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(\"./target/release/mic-volume-control.exe\")",
+      "Bash(\"./target/release/mic-volume-control.exe\" volume --help)",
+      "Bash(\"./target/release/mic-volume-control.exe\" install --help)",
+      "Bash(cargo build:*)",
+      "Bash(\"./target/release/mic-volume-control.exe\" config)",
+      "Bash(\"./target/release/mic-volume-control.exe\" volume)",
+      "Bash(\"./target/release/mic-volume-control.exe\" --version)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

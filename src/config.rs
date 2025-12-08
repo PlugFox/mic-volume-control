@@ -8,117 +8,78 @@ const APPLICATION: &str = "mic-volume-control";
 
 #[derive(Debug, Parser)]
 #[command(name = "mic-volume-control")]
-#[command(about = "Automatically maintains microphone volume at a configured level", long_about = None)]
+#[command(about = "Simple microphone volume control utility", long_about = None)]
 #[command(version)]
+#[command(arg_required_else_help = true)]
 pub struct Cli {
-    /// Target volume level (0-100)
-    #[arg(short = 'v', long, value_parser = clap::value_parser!(u8).range(0..=100))]
-    pub volume: Option<u8>,
-
-    /// Check interval in milliseconds
-    #[arg(short = 'i', long, value_parser = clap::value_parser!(u64).range(100..))]
-    pub interval: Option<u64>,
-
-    /// Disable system tray icon
-    #[arg(long)]
-    pub no_tray: bool,
-
-    /// Disable autostart
-    #[arg(long)]
-    pub no_autostart: bool,
-
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Install autostart task
-    Install,
+    /// Get or set microphone volume
+    Volume {
+        /// Volume level to set (0-100). If not specified, shows current volume
+        #[arg(value_parser = clap::value_parser!(u8).range(0..=100))]
+        level: Option<u8>,
+    },
 
-    /// Uninstall autostart task
+    /// Install Windows Task Scheduler task for automatic volume control
+    Install {
+        /// Target volume level (0-100)
+        #[arg(short, long, default_value = "95")]
+        volume: u8,
+
+        /// Run interval in minutes
+        #[arg(short, long, default_value = "5")]
+        interval: u32,
+    },
+
+    /// Uninstall Windows Task Scheduler task
     Uninstall,
 
     /// Show current configuration
     Config,
-
-    /// Get current microphone volume
-    GetVolume,
-
-    /// Set microphone volume once (without monitoring)
-    SetVolume {
-        /// Volume level (0-100)
-        #[arg(value_parser = clap::value_parser!(u8).range(0..=100))]
-        volume: u8,
-    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     /// Target volume level (0.0 to 1.0, where 1.0 = 100%)
+    #[serde(default = "default_volume")]
     pub target_volume: f32,
 
-    /// How often to check the volume in milliseconds
-    pub check_interval_ms: u64,
+    /// Task run interval in minutes
+    #[serde(default = "default_interval")]
+    pub run_interval_minutes: u32,
+}
 
-    /// Enable system tray icon
-    pub enable_tray: bool,
+fn default_volume() -> f32 {
+    0.95
+}
 
-    /// Enable autostart with Windows
-    pub enable_autostart: bool,
+fn default_interval() -> u32 {
+    5
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            target_volume: 0.95,        // 95%
-            check_interval_ms: 300_000, // 5 minutes (300,000 ms)
-            enable_tray: true,
-            enable_autostart: true,
+            target_volume: default_volume(),
+            run_interval_minutes: default_interval(),
         }
     }
 }
 
 impl Config {
-    /// Load config from file, merging with CLI arguments
-    pub fn load(cli: &Cli) -> Result<Self> {
-        let mut config = Self::load_from_file().unwrap_or_default();
-
-        // Override with CLI arguments
-        if let Some(volume) = cli.volume {
-            config.target_volume = volume as f32 / 100.0;
-        }
-
-        if let Some(interval) = cli.interval {
-            config.check_interval_ms = interval;
-        }
-
-        if cli.no_tray {
-            config.enable_tray = false;
-        }
-
-        if cli.no_autostart {
-            config.enable_autostart = false;
-        }
-
-        // Validate
-        config.validate()?;
-
-        // Save the merged config back to file
-        config.save()?;
-
-        Ok(config)
-    }
-
     pub fn load_from_file() -> Result<Self> {
         let config_path = Self::get_config_path()?;
 
         if !config_path.exists() {
-            return Err(anyhow::anyhow!("Config file not found"));
+            return Ok(Self::default());
         }
 
         let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
-
         let config: Config = toml::from_str(&content).context("Failed to parse config file")?;
 
         Ok(config)
@@ -133,20 +94,7 @@ impl Config {
         }
 
         let content = toml::to_string_pretty(self).context("Failed to serialize config")?;
-
         fs::write(&config_path, content).context("Failed to write config file")?;
-
-        Ok(())
-    }
-
-    fn validate(&self) -> Result<()> {
-        if !(0.0..=1.0).contains(&self.target_volume) {
-            anyhow::bail!("target_volume must be between 0.0 and 1.0");
-        }
-
-        if self.check_interval_ms < 100 {
-            anyhow::bail!("check_interval_ms must be at least 100ms");
-        }
 
         Ok(())
     }
@@ -155,32 +103,9 @@ impl Config {
         let app_data =
             std::env::var("APPDATA").context("APPDATA environment variable not found")?;
 
-        // Create path: AppData/Roaming/mic-volume-control/config.toml
         let mut path = PathBuf::from(app_data);
         path.push(APPLICATION);
         path.push("config.toml");
-
-        Ok(path)
-    }
-
-    pub fn get_config_dir() -> Result<PathBuf> {
-        let config_path = Self::get_config_path()?;
-        config_path
-            .parent()
-            .map(|p| p.to_path_buf())
-            .context("Failed to get parent directory of config path")
-    }
-
-    pub fn get_log_path() -> Result<PathBuf> {
-        let local_app_data =
-            std::env::var("LOCALAPPDATA").context("LOCALAPPDATA environment variable not found")?;
-
-        // Create path: AppData/Local/mic-volume-control/logs/app.log
-        let mut path = PathBuf::from(local_app_data);
-        path.push(APPLICATION);
-        path.push("logs");
-        fs::create_dir_all(&path)?;
-        path.push("app.log");
 
         Ok(path)
     }
@@ -189,30 +114,10 @@ impl Config {
     pub fn display(&self) {
         println!("Current Configuration:");
         println!("  Target Volume: {:.0}%", self.target_volume * 100.0);
-        println!("  Check Interval: {}ms", self.check_interval_ms);
-        println!(
-            "  System Tray: {}",
-            if self.enable_tray {
-                "enabled"
-            } else {
-                "disabled"
-            }
-        );
-        println!(
-            "  Autostart: {}",
-            if self.enable_autostart {
-                "enabled"
-            } else {
-                "disabled"
-            }
-        );
+        println!("  Run Interval: {} minutes", self.run_interval_minutes);
 
         if let Ok(path) = Self::get_config_path() {
             println!("\nConfig file: {}", path.display());
-        }
-
-        if let Ok(path) = Self::get_log_path() {
-            println!("Log file: {}", path.display());
         }
     }
 }
@@ -222,33 +127,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_config_validation() {
+    fn test_default_config() {
         let config = Config::default();
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn test_invalid_volume() {
-        let config = Config {
-            target_volume: 1.5,
-            ..Default::default()
-        };
-        assert!(config.validate().is_err());
-
-        let config = Config {
-            target_volume: -0.1,
-            ..Default::default()
-        };
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn test_invalid_interval() {
-        let config = Config {
-            check_interval_ms: 50,
-            ..Default::default()
-        };
-        assert!(config.validate().is_err());
+        assert_eq!(config.target_volume, 0.95);
+        assert_eq!(config.run_interval_minutes, 5);
     }
 
     #[test]
@@ -258,6 +140,24 @@ mod tests {
         let deserialized: Config = toml::from_str(&serialized).unwrap();
 
         assert_eq!(config.target_volume, deserialized.target_volume);
-        assert_eq!(config.check_interval_ms, deserialized.check_interval_ms);
+        assert_eq!(
+            config.run_interval_minutes,
+            deserialized.run_interval_minutes
+        );
+    }
+
+    #[test]
+    fn test_partial_config() {
+        // Config with only target_volume (old format)
+        let partial = "target_volume = 0.8";
+        let config: Config = toml::from_str(partial).unwrap();
+        assert_eq!(config.target_volume, 0.8);
+        assert_eq!(config.run_interval_minutes, 5); // default value
+
+        // Empty config
+        let empty = "";
+        let config: Config = toml::from_str(empty).unwrap();
+        assert_eq!(config.target_volume, 0.95); // default value
+        assert_eq!(config.run_interval_minutes, 5); // default value
     }
 }

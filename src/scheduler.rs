@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use log::{debug, info};
 use windows::{
     Win32::Foundation::*, Win32::System::Com::*, Win32::System::TaskScheduler::*, core::*,
 };
@@ -14,10 +13,6 @@ pub struct TaskScheduler {
 impl TaskScheduler {
     pub fn new() -> Result<Self> {
         unsafe {
-            CoInitializeEx(None, COINIT_MULTITHREADED)
-                .ok()
-                .context("Failed to initialize COM")?;
-
             let service: ITaskService =
                 CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
                     .context("Failed to create TaskScheduler instance")?;
@@ -30,23 +25,17 @@ impl TaskScheduler {
         }
     }
 
-    pub fn register_autostart(&self) -> Result<()> {
+    pub fn register_task(&self, target_volume: f32, interval_minutes: u32) -> Result<()> {
         let exe_path = std::env::current_exe().context("Failed to get current executable path")?;
 
-        info!("Registering autostart task for: {}", exe_path.display());
-
         unsafe {
-            // Get the root folder
             let root_folder = self
                 .service
                 .GetFolder(&BSTR::from(TASK_FOLDER))
                 .context("Failed to get task folder")?;
 
-            // Try to delete existing task if it exists
-            match root_folder.DeleteTask(&BSTR::from(TASK_NAME), 0) {
-                Ok(_) => info!("Removed existing task"),
-                Err(_) => debug!("No existing task to remove"),
-            }
+            // Delete existing task if it exists
+            let _ = root_folder.DeleteTask(&BSTR::from(TASK_NAME), 0);
 
             // Create new task definition
             let task_definition = self
@@ -63,7 +52,7 @@ impl TaskScheduler {
                 .context("Failed to set author")?;
             reg_info
                 .SetDescription(&BSTR::from(
-                    "Maintains microphone volume at configured level",
+                    "Automatically sets microphone volume to configured level",
                 ))
                 .context("Failed to set description")?;
 
@@ -78,25 +67,58 @@ impl TaskScheduler {
                 .SetRunLevel(TASK_RUNLEVEL_HIGHEST)
                 .context("Failed to set run level")?;
 
-            // Create trigger (at logon)
+            // Create triggers
             let triggers = task_definition
                 .Triggers()
                 .context("Failed to get triggers collection")?;
 
-            let trigger = triggers
+            // 1. Logon trigger - run at login with delay
+            let logon_trigger = triggers
                 .Create(TASK_TRIGGER_LOGON)
                 .context("Failed to create logon trigger")?;
-
-            trigger
-                .SetEnabled(VARIANT_TRUE)
-                .context("Failed to enable trigger")?;
-
-            // Set delay to prevent startup conflicts
-            let logon_trigger: ILogonTrigger =
-                trigger.cast().context("Failed to cast to ILogonTrigger")?;
             logon_trigger
-                .SetDelay(&BSTR::from("PT30S"))
-                .context("Failed to set delay")?;
+                .SetEnabled(VARIANT_TRUE)
+                .context("Failed to enable logon trigger")?;
+
+            let logon_trigger_cast: ILogonTrigger = logon_trigger
+                .cast()
+                .context("Failed to cast to ILogonTrigger")?;
+            logon_trigger_cast
+                .SetDelay(&BSTR::from("PT1M"))
+                .context("Failed to set logon delay")?;
+
+            // 2. Time trigger - repeat every N minutes
+            let time_trigger = triggers
+                .Create(TASK_TRIGGER_TIME)
+                .context("Failed to create time trigger")?;
+            time_trigger
+                .SetEnabled(VARIANT_TRUE)
+                .context("Failed to enable time trigger")?;
+
+            let time_trigger_cast: ITimeTrigger = time_trigger
+                .cast()
+                .context("Failed to cast to ITimeTrigger")?;
+
+            // Start immediately (or at next boot)
+            time_trigger_cast
+                .SetStartBoundary(&BSTR::from("2025-01-01T00:00:00"))
+                .context("Failed to set start boundary")?;
+
+            // Set repetition pattern
+            let repetition = time_trigger_cast
+                .Repetition()
+                .context("Failed to get repetition pattern")?;
+
+            // Format: PT5M for 5 minutes, PT1H for 1 hour, etc.
+            let interval_str = format!("PT{}M", interval_minutes);
+            repetition
+                .SetInterval(&BSTR::from(interval_str))
+                .context("Failed to set repetition interval")?;
+
+            // Run indefinitely
+            repetition
+                .SetDuration(&BSTR::from(""))
+                .context("Failed to set duration")?;
 
             // Create action (start program)
             let actions = task_definition
@@ -119,6 +141,13 @@ impl TaskScheduler {
             exec_action
                 .SetPath(&BSTR::from(exe_path_str))
                 .context("Failed to set executable path")?;
+
+            // Set arguments to call volume command
+            let volume_percent = (target_volume * 100.0) as u8;
+            let args = format!("volume {}", volume_percent);
+            exec_action
+                .SetArguments(&BSTR::from(args))
+                .context("Failed to set arguments")?;
 
             // Set working directory
             if let Some(parent) = exe_path.parent() {
@@ -151,8 +180,11 @@ impl TaskScheduler {
                 .SetAllowDemandStart(VARIANT_TRUE)
                 .context("Failed to set allow demand start")?;
             settings
-                .SetExecutionTimeLimit(&BSTR::from("PT0S"))
+                .SetExecutionTimeLimit(&BSTR::from("PT5M"))
                 .context("Failed to set execution time limit")?;
+            settings
+                .SetMultipleInstances(TASK_INSTANCES_IGNORE_NEW)
+                .context("Failed to set multiple instances policy")?;
 
             // Register the task
             root_folder
@@ -167,12 +199,11 @@ impl TaskScheduler {
                 )
                 .context("Failed to register task definition")?;
 
-            info!("Autostart task registered successfully");
             Ok(())
         }
     }
 
-    pub fn unregister_autostart(&self) -> Result<()> {
+    pub fn unregister_task(&self) -> Result<()> {
         unsafe {
             let root_folder = self
                 .service
@@ -183,7 +214,6 @@ impl TaskScheduler {
                 .DeleteTask(&BSTR::from(TASK_NAME), 0)
                 .context("Failed to delete task")?;
 
-            info!("Autostart task unregistered successfully");
             Ok(())
         }
     }
@@ -194,14 +224,6 @@ impl TaskScheduler {
                 Ok(folder) => folder.GetTask(&BSTR::from(TASK_NAME)).is_ok(),
                 Err(_) => false,
             }
-        }
-    }
-}
-
-impl Drop for TaskScheduler {
-    fn drop(&mut self) {
-        unsafe {
-            CoUninitialize();
         }
     }
 }

@@ -1,4 +1,4 @@
-# Microphone Volume Control 🎤
+# Microphone Volume Control
 
 [![CI](https://github.com/plugfox/mic-volume-control/workflows/CI/badge.svg)](https://github.com/plugfox/mic-volume-control/actions/workflows/ci.yml)
 [![Lint](https://github.com/plugfox/mic-volume-control/workflows/Lint/badge.svg)](https://github.com/plugfox/mic-volume-control/actions/workflows/lint.yml)
@@ -7,21 +7,25 @@
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 [![Windows](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
-A lightweight, efficient Windows application that automatically maintains your microphone volume at a configured level. Built with Rust for maximum performance and reliability.
+A simple Windows utility to automatically maintain your microphone volume at a configured level using Windows Task Scheduler. Unlike traditional background applications, this tool runs only when scheduled, making it extremely lightweight.
 
-## ✨ Features
+## Features
 
-- **Automatic Volume Control**: Continuously monitors and maintains microphone volume at your desired level
-- **System Tray Integration**: Runs quietly in the background with a convenient system tray icon
-- **Autostart Support**: Automatically starts with Windows via Task Scheduler
-- **CLI Interface**: Full command-line interface for advanced users
-- **TOML Configuration**: Easy-to-edit configuration file
-- **Minimal Resource Usage**: Optimized for low CPU and memory footprint
-- **Comprehensive Logging**: Detailed logs for troubleshooting
+- **Automatic Volume Control**: Set your desired microphone volume level and let the app maintain it
+- **Windows Task Scheduler Integration**: Runs periodically in the background without manual intervention
+- **Lightweight**: Simple CLI tool with minimal resource usage
+- **No Background Process**: Runs when scheduled and exits immediately
+- **Easy Installation**: Simple commands to set up and configure
 
-## 📦 Installation
+## Installation
 
-### From Source
+### Option 1: Download Release Binary
+
+1. Download the latest `mic-volume-control.exe` from the [Releases](https://github.com/plugfox/mic-volume-control/releases) page
+2. Place it in a permanent location (e.g., `C:\Program Files\MicVolumeControl\`)
+3. Run the install command (see Usage below)
+
+### Option 2: Build from Source
 
 1. Install [Rust](https://www.rust-lang.org/tools/install) (1.75 or later)
 2. Clone this repository:
@@ -35,261 +39,151 @@ A lightweight, efficient Windows application that automatically maintains your m
    ```
 4. The executable will be in `target/release/mic-volume-control.exe`
 
-### Pre-built Binaries
+## Usage
 
-Download the latest release from the [Releases](https://github.com/plugfox/mic-volume-control/releases) page.
+> [!CAUTION]
+> Install and Uninstall commands require Administrator privileges to create/remove Task Scheduler tasks.
+> Run your terminal as Administrator or use `sudo` equivalent.
 
-## 🚀 Quick Start
+### Install Automatic Task
 
-1. Run the application:
-   ```bash
-   mic-volume-control.exe
-   ```
-
-2. On first run, it will:
-   - Create a default configuration file
-   - Set microphone volume to 95%
-   - Register autostart task
-   - Show system tray icon
-
-3. To customize settings, edit the configuration file at:
-   ```
-   %APPDATA%\mic-volume-control\config.toml
-   ```
-
-## 📖 Usage
-
-### Basic Usage
-
-Start with default settings (95% volume, 5 minute check interval):
-```bash
-mic-volume-control.exe
-```
-
-### Command-Line Options
+Install a Windows Task Scheduler task that will automatically set your microphone volume:
 
 ```bash
-# Set custom volume (0-100)
-mic-volume-control.exe --volume 90
-
-# Set custom check interval in milliseconds
-mic-volume-control.exe --interval 1000
-
-# Disable system tray icon (console mode)
-mic-volume-control.exe --no-tray
-
-# Disable autostart
-mic-volume-control.exe --no-autostart
-
-# Combine options
-mic-volume-control.exe -v 85 -i 500 --no-tray
-```
-
-### Subcommands
-
-#### Install Autostart
-```bash
+# Install with default settings (95% volume, run every 5 minutes)
 mic-volume-control.exe install
+
+# Install with custom settings
+mic-volume-control.exe install --volume 80 --interval 10
 ```
 
-#### Uninstall Autostart
+Options:
+- `--volume <0-100>`: Target volume percentage (default: 95)
+- `--interval <minutes>`: How often to run (default: 5 minutes)
+
+The task will:
+- Run at Windows login (after 1 minute delay)
+- Repeat at the specified interval
+- Set your microphone volume to the target level
+
+### Manual Volume Control
+
 ```bash
-mic-volume-control.exe uninstall
+# Get current microphone volume
+mic-volume-control.exe volume
+
+# Set microphone volume once (without installing task)
+mic-volume-control.exe volume 95
 ```
 
-#### Show Configuration
+### View Configuration
+
 ```bash
+# Show current configuration and task status
 mic-volume-control.exe config
 ```
 
-#### Get Current Volume
+### Uninstall Task
+
 ```bash
-mic-volume-control.exe get-volume
+# Remove the scheduled task
+mic-volume-control.exe uninstall
 ```
 
-#### Set Volume (One-time)
-```bash
-mic-volume-control.exe set-volume 90
-```
+## How It Works
 
-## ⚙️ Configuration
+1. **Install**: When you run `install`, the app:
+   - Saves your configuration to `%APPDATA%\mic-volume-control\config.toml`
+   - Creates a Windows Task Scheduler task that runs `mic-volume-control.exe volume <target>`
 
-The configuration file is located at:
-```
-%APPDATA%\mic-volume-control\config.toml
-```
+2. **Automatic Execution**: Windows Task Scheduler runs the app:
+   - At login (after 1 minute delay)
+   - Every N minutes (configurable)
+   - The app sets the microphone volume and exits immediately
 
-Example configuration:
+3. **No Background Process**: Unlike traditional background apps, this utility doesn't run continuously. It only executes when scheduled, making it extremely lightweight.
+
+## Configuration
+
+Configuration is stored in: `%APPDATA%\mic-volume-control\config.toml`
+
+Example:
 ```toml
-# Target volume level (0.0 to 1.0, where 1.0 = 100%)
-target_volume = 0.95
-
-# How often to check the volume in milliseconds (300000 = 5 minutes)
-check_interval_ms = 300000
-
-# Enable system tray icon
-enable_tray = true
-
-# Enable autostart with Windows
-enable_autostart = true
+target_volume = 0.95  # 95%
+run_interval_minutes = 5
 ```
 
-### Configuration Priority
+You can edit this file manually, but it's recommended to use the `install` command to update settings.
 
-Settings are applied in the following order (later overrides earlier):
-1. Default values
-2. Configuration file
-3. Command-line arguments
+## Managing the Task
 
-### Recommended Check Intervals
+You can view and manage the scheduled task in Windows Task Scheduler:
 
-- **Normal use**: 300000ms (5 minutes) - Default, minimal CPU usage
-- **Responsive**: 60000ms (1 minute) - Good balance
-- **Very responsive**: 10000ms (10 seconds) - For active monitoring
-- **Real-time**: 1000ms (1 second) - Only if needed, higher CPU usage
+1. Press `Win + R` and type `taskschd.msc`
+2. Look for "MicrophoneVolumeControl" in the task list
+3. You can run it manually, disable it, or view execution history
 
-The default 5-minute interval is sufficient for most use cases, as volume changes are typically rare.
+## Requirements
 
-## 🖥️ System Tray
+- Windows 10 or later
+- Administrator privileges (for Task Scheduler operations)
 
-When enabled, the system tray icon provides:
-- **Status Display**: Shows target volume
-- **Quick Actions**:
-  - Open Config - Opens configuration directory
-  - Pause Monitoring - (Future feature)
-  - Quit - Exits the application
+## Why This Approach?
 
-## 📝 Logs
+Many microphone volume control apps run continuously in the system tray, consuming memory and resources. This app takes a different approach:
 
-Logs are stored at:
-```
-%LOCALAPPDATA%\mic-volume-control\logs\app.log
-```
+- **No Background Process**: Only runs when scheduled
+- **Native Scheduling**: Uses Windows Task Scheduler instead of custom scheduling
+- **Minimal Resource Usage**: No memory footprint between runs
+- **System Integration**: Works with Windows power management and task scheduling
 
-The log file contains:
-- Application startup/shutdown events
-- Volume changes and drift detection
-- Errors and warnings
-- Timestamps for all events
+## Development
 
-### Log Rotation
+### Cargo Aliases
 
-Logs are automatically rotated when they exceed 5 MB:
-- Current log: `app.log`
-- Rotated logs: `app.log.1`, `app.log.2`, `app.log.3`
-- Maximum rotated logs kept: 3
-- Oldest logs are automatically deleted
-
-This ensures logs don't grow indefinitely while preserving recent history.
-
-## 🔧 How It Works
-
-1. **Initialization**:
-   - Loads configuration from file
-   - Initializes Windows Audio API (WASAPI)
-   - Registers autostart task if enabled
-   - Creates system tray icon
-
-2. **Volume Monitoring**:
-   - Checks microphone volume at configured intervals (default: every 5 minutes)
-   - Detects volume drift (>1% change)
-   - Automatically corrects volume to target level
-
-3. **Background Operation**:
-   - Runs as a lightweight background process
-   - Uses COM (Component Object Model) for audio control
-   - Sleeps between checks - virtually zero CPU usage with default interval
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────┐
-│   Main Application  │
-└──────────┬──────────┘
-           │
-    ┌──────┴──────┬──────────────┬────────────┐
-    │             │              │            │
-┌───▼────┐  ┌────▼─────┐  ┌────▼────┐  ┌────▼─────┐
-│ Audio  │  │ Config   │  │ Tray    │  │Scheduler │
-│ Engine │  │ Manager  │  │ Icon    │  │(Autostart)│
-└────┬───┘  └──────────┘  └─────────┘  └──────────┘
-     │
-     └──► Windows Audio API (WASAPI)
-```
-
-## 🛠️ Development
-
-### Cargo Aliases (npm scripts для Rust)
-
-Проект использует встроенные cargo aliases для упрощения разработки (определены в [.cargo/config.toml](.cargo/config.toml)):
+Project uses cargo aliases for development (defined in [.cargo/config.toml](.cargo/config.toml)):
 
 ```bash
-# Проверка форматирования
+# Check formatting
 cargo fmt-check
 
-# Автоформатирование кода
+# Auto-format code
 cargo fmt-fix
 
-# Линтинг с clippy
+# Lint with clippy
 cargo lint
 
-# Автоисправление проблем clippy
+# Auto-fix clippy issues
 cargo lint-fix
 
-# Проверка компиляции
+# Check compilation
 cargo check-all
 
-# Запуск тестов
+# Run tests
 cargo test-all
 
-# Сборка release версии
+# Build release version
 cargo build-release
 
-# Очистка
+# Clean
 cargo clean-all
 ```
 
-Для полной CI-проверки локально запустите:
+For complete local CI check:
 ```bash
-# Проверка Rust кода
+# Check Rust code
 cargo fmt-check && cargo lint && cargo check-all && cargo test-all
 
-# Проверка TOML файлов (требует taplo-cli)
+# Check TOML files (requires taplo-cli)
 taplo format --check && taplo lint
 
-# Или всё вместе
+# Or all together
 cargo fmt-check && cargo lint && taplo format --check && taplo lint && cargo test-all
 ```
 
-Установка taplo (для проверки TOML):
+Install taplo (for TOML validation):
 ```bash
 cargo install taplo-cli --locked
-```
-
-### Building
-
-```bash
-# Debug build
-cargo build
-
-# Release build (optimized)
-cargo build-release  # или cargo build --release
-
-# Run tests
-cargo test-all       # или cargo test
-
-# Run with logging
-RUST_LOG=debug cargo run
-```
-
-### Testing
-
-```bash
-# Run all tests
-cargo test-all       # или cargo test
-
-# Run tests including ignored ones (requires microphone)
-cargo test -- --ignored --test-threads=1
 ```
 
 ### Project Structure
@@ -297,24 +191,15 @@ cargo test -- --ignored --test-threads=1
 ```
 mic-volume-control/
 ├── .cargo/
-│   └── config.toml     # Cargo aliases (npm scripts аналог)
+│   └── config.toml     # Cargo aliases
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml      # Continuous integration
-│       ├── lint.yml    # Code quality checks
-│       └── release.yml # Release automation
-├── .vscode/
-│   ├── tasks.json      # VS Code tasks (build, test, CI)
-│   ├── settings.json   # Editor and Rust settings
-│   ├── launch.json     # Debug configurations
-│   ├── extensions.json # Recommended extensions
-│   └── README.md       # VS Code setup guide
+│   └── workflows/      # CI/CD pipelines
+├── .vscode/            # VS Code configuration
 ├── src/
 │   ├── main.rs         # Application entry point and CLI handling
-│   ├── audio.rs        # Windows Audio API wrapper with RAII COM guards
+│   ├── audio.rs        # Windows Audio API wrapper
 │   ├── config.rs       # Configuration management and CLI parser
-│   ├── scheduler.rs    # Task Scheduler integration for autostart
-│   └── tray.rs         # System tray implementation
+│   └── scheduler.rs    # Task Scheduler integration
 ├── Cargo.toml          # Dependencies and metadata
 ├── rustfmt.toml        # Code formatting rules
 ├── clippy.toml         # Linter configuration
@@ -326,57 +211,44 @@ mic-volume-control/
 The project uses GitHub Actions for automated testing and releases:
 
 #### Continuous Integration (CI)
-Runs on every push/PR to main branches when Rust or TOML files change:
+Runs on every push/PR:
 - **Format Check**: Ensures code follows rustfmt standards
 - **Clippy Lint**: Static analysis for common mistakes
 - **Tests**: Runs all unit tests
 - **Build**: Compiles release binary
 - **Security Audit**: Checks for vulnerable dependencies
 
-#### Lint Workflow
-Separate workflow for code quality:
-- Rust formatting validation
-- Clippy warnings as errors
-- TOML syntax validation
-
 #### Release Workflow
 Manual trigger for creating releases:
 - Updates version in Cargo.toml
 - Builds optimized binary
 - Generates checksums (SHA256)
-- Creates GitHub release with:
-  - Standalone EXE
-  - ZIP archive with README
-  - Release notes
-  - Binary size information
+- Creates GitHub release with artifacts
 
-**To create a release:**
-1. Go to Actions → Release workflow
-2. Click "Run workflow"
-3. Enter version (e.g., `v1.0.0`)
-4. Optionally mark as pre-release
-5. Run!
-
-## 📋 Requirements
-
-- **OS**: Windows 10 or later
-- **Rust**: 1.75+ (for building from source)
-- **Permissions**: Administrator rights for autostart installation
-
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Application won't start
 - Check if microphone is connected and recognized by Windows
-- Run as Administrator for first-time setup
-- Check logs at `%LOCALAPPDATA%\mic-volume-control\logs\app.log`
+- Run as Administrator for Task Scheduler operations
 
 ### Volume keeps resetting
 - Another application may be controlling microphone volume
 - Check if exclusive mode is enabled in microphone properties
-- Decrease check interval if you need faster response (default is 5 minutes)
+- Adjust the interval if needed
 
-### Autostart not working
-- Manually install: `mic-volume-control.exe install`
-- Check Task Scheduler for "MicrophoneVolumeControl" task
-- Ensure application path hasn't changed
+### Task not running
+- Check Task Scheduler: Press `Win + R`, type `taskschd.msc`
+- Look for "MicrophoneVolumeControl" task
+- Verify the task is enabled and the executable path is correct
 
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Author
+
+Plague Fox <plugfox@gmail.com>
