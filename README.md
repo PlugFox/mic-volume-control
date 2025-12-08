@@ -97,12 +97,13 @@ mic-volume-control.exe uninstall
 
 1. **Install**: When you run `install`, the app:
    - Saves your configuration to `%APPDATA%\mic-volume-control\config.toml`
-   - Creates a Windows Task Scheduler task that runs `mic-volume-control.exe volume <target>`
+   - Creates a Windows Task Scheduler task that runs `mic-volume-control.exe --quiet volume <target>`
 
 2. **Automatic Execution**: Windows Task Scheduler runs the app:
    - At login (after 1 minute delay)
    - Every N minutes (configurable)
    - The app sets the microphone volume and exits immediately
+   - Runs completely hidden (no console window, no notifications)
 
 3. **No Background Process**: Unlike traditional background apps, this utility doesn't run continuously. It only executes when scheduled, making it extremely lightweight.
 
